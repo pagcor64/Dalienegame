@@ -303,3 +303,21 @@ async function skipTurn(){if(confirm("Skip?"))nextRound();}
 </script>
 </body>
 </html>
+<script>
+(function(){
+  var mCtx=null,mInt=null,step=0;
+  var notes=[110,130.8,146.8,130.8,116.5,130.8,146.8,164.8];
+  function unlk(){if(!mCtx)mCtx=new(window.AudioContext||window.webkitAudioContext)();if(mCtx.state==="suspended")mCtx.resume();}
+  document.addEventListener("touchstart",unlk);document.addEventListener("click",unlk);
+  function playN(f,d,v,tp){if(st.mute)return;try{unlk();var o=mCtx.createOscillator(),g=mCtx.createGain();o.type=tp||"triangle";o.frequency.value=f;g.gain.setValueAtTime(v||.12,mCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,mCtx.currentTime+d);o.connect(g);g.connect(mCtx.destination);o.start();o.stop(mCtx.currentTime+d);}catch(e){}}
+  function startMusic(){if(mInt)return;step=0;mInt=setInterval(function(){playN(notes[step%notes.length],.38,.12,"triangle");if(step%4===0)playN(55,.45,.15,"sine");step++;},450);}
+  function stopMusic(){clearInterval(mInt);mInt=null;}
+  var rPrev=render,curQ="",resDone=false;
+  render=function(d){
+    rPrev(d);
+    if(d.status==="guessing"&&d.current?.question!==curQ){curQ=d.current.question;resDone=false;startMusic();}
+    if(d.status==="results"&&!resDone){resDone=true;curQ="";stopMusic();[523.2,659.2,783.9,1046.5].forEach(function(n,i){setTimeout(function(){playN(n,.3,.2,"triangle");},i*140);});}
+    if(d.status==="lobby"||d.status==="asking")stopMusic();
+  };
+})();
+</script>
