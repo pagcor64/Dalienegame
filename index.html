@@ -234,12 +234,16 @@ function render(d){
 }
 async function aiCall(pr){
   var k=(st.data?.apiKey||"").trim();
-  var ms=["gemini-3.5-flash-lite","gemini-3.8-flash"];
+  var ms=["gemini-2.5-flash-lite","gemini-2.5-flash","gemini-3.5-flash-lite","gemini-3.8-flash"];
   for(var i=0;i<ms.length;i++){
     var u="https://generativelanguage.googleapis"+".c"+"om/v1beta/models/"+ms[i]+":generateContent?key="+k;
     var r=await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:pr}]}],generationConfig:{responseMimeType:"application/json"}})});
     var j=await r.json();
     if(r.ok&&!j.error)return JSON.parse(j.candidates[0].content.parts[0].text.replace(/```json|```/g,"").trim());
+    if(i===ms.length-1){var m=j.error?.message||("HTTP "+r.status);alert("Error Google: "+m);throw new Error(m);}
+  }
+}
+
     if(i===ms.length-1){var m=j.error?.message||("HTTP "+r.status);alert("Error Google: "+m);throw new Error(m);}
   }
 }
