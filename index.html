@@ -234,13 +234,16 @@ function render(d){
 }
 async function aiCall(pr){
   var k=(st.data?.apiKey||"").trim();
-var u="https://generativelanguage.googleapis"+".c"+"om/v1beta/models/gemini-3.8-flash:generateContent?key="+k;
-
-  var r=await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:pr}]}],generationConfig:{responseMimeType:"application/json"}})});
-  var j=await r.json();
-  if(!r.ok||j.error){var m=j.error?.message||("HTTP "+r.status);alert("Error Google: "+m);throw new Error(m);}
-  return JSON.parse(j.candidates[0].content.parts[0].text.replace(/```json|```/g,"").trim());
+  var ms=["gemini-3.5-flash-lite","gemini-3.8-flash"];
+  for(var i=0;i<ms.length;i++){
+    var u="https://generativelanguage.googleapis"+".c"+"om/v1beta/models/"+ms[i]+":generateContent?key="+k;
+    var r=await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:pr}]}],generationConfig:{responseMimeType:"application/json"}})});
+    var j=await r.json();
+    if(r.ok&&!j.error)return JSON.parse(j.candidates[0].content.parts[0].text.replace(/```json|```/g,"").trim());
+    if(i===ms.length-1){var m=j.error?.message||("HTTP "+r.status);alert("Error Google: "+m);throw new Error(m);}
+  }
 }
+
 async function suggestQ(){var b=document.getElementById("aiBtn");b.disabled=true;b.innerText="...";try{var l=st.lang==="es"?"español":"English";var d=await aiCall('Generate 1 fun trivia question whose answer is an exact number (year, weight, distance, height). Respond ONLY JSON: {"question":"in '+l+'"}');document.getElementById("qIn").value=d.question;}catch(e){}b.disabled=false;applyL();}
 async function submitQ(){var q=document.getElementById("qIn").value.trim();if(!q)return;var b=document.getElementById("sendBtn");b.disabled=true;b.innerText="...";try{var l=st.lang==="es"?"español":"English";var ai=await aiCall('Trivia referee. Question: "'+q+'". Find exact numeric answer and clear unit in '+l+'. Respond ONLY JSON: {"answer":number_only,"unit":"unit","note":"1 short sentence"}');await db.ref("rooms/"+st.room).update({status:"guessing",current:{question:q,answer:Number(ai.answer),unit:ai.unit,note:ai.note,guesses:{}}});}catch(e){b.disabled=false;}applyL();}
 async function submitG(){var v=parseFloat(document.getElementById("gIn").value);if(isNaN(v))return;await db.ref("rooms/"+st.room+"/current/guesses/"+st.pid).set(v);document.getElementById("gIn").value="";}
