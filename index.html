@@ -187,7 +187,8 @@ function listen(c){document.getElementById("sLogin").classList.add("hide");apply
 function render(d){
   var t=T[st.lang];
   ["sLobby","sGame","sRes"].forEach(function(i){document.getElementById(i).classList.add("hide");});
-  var arr=Object.entries(d.players||{}).map(function(e){return Object.assign({id:e[0]},e[1]);}).sort(function(a,b){return a.order-b.order;});
+    var arr=Object.entries(d.players||{}).map(function(e){return Object.assign({id:e[0]},e[1]);}).sort(function(a,b){return a.order-b.order;});
+
   if(d.status==="lobby"){
     document.getElementById("sLobby").classList.remove("hide");
     document.getElementById("lCode").innerText=st.room;
@@ -226,23 +227,26 @@ function render(d){
     document.getElementById("totSc").innerHTML=[].concat(arr).sort(function(a,b){return b.score-a.score;}).map(function(p){return '<div class="row"><span>'+p.name+'</span><b>'+p.score+' pts</b></div>';}).join("");
     var ask=arr[d.turnIndex%arr.length];
     document.getElementById("nextBtn").classList.toggle("hide",!(st.adm||ask.id===st.pid));
-    var w=c.ranking?c.ranking[0]:null;
+    
     var rsp=t.spR+" "+c.answer+" "+c.unit+". "+(w?t.spW+" "+w.name:"");
     if(st.spk!==rsp){st.spk=rsp;speak(rsp);}
   }
-}
+}    var w=c.ranking?c.ranking[0]:null;
+
 async function aiCall(pr){
   var k=(st.data?.apiKey||"").trim();
   var u="https://generativelanguage.googleapis"+".c"+"om/v1beta/models/gemini-3.8-flash:generateContent?key="+k;
   var r=await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:pr}]}],generationConfig:{responseMimeType:"application/json"}})});
   var j=await r.json();
   if(!r.ok||j.error){var m=j.error?.message||("HTTP "+r.status);alert("Error Google: "+m);throw new Error(m);}
-  return JSON.parse(j.candidates[0].content.parts[0].text.replace(/```json|```/g,"").trim());
+    return JSON.parse(j.candidates[0].content.parts[0].text.replace(/```json|```/g,"").trim());
+async function closeRound(){var d=st.data,ex=d.current.answer,gs=d.current.guesses||{};var rk=Object.entries(gs).map(function(e){return {pid:e[0],name:d.players[e[0]]?.name||"?",guess:e[1],diff:Math.abs(ex-e[1])};}).sort(function(a,b){return a.diff-b.diff;});var up={};rk.forEach(function(r,i){var pts=r.diff===0?100:i===0?50:i===1?25:0;r.points=pts;up["players/"+r.pid+"/score"]=(d.players[r.pid].score||0)+pts;});up.status="results";up["current/ranking"]=rk;await db.ref("rooms/"+st.room).update(up);}
+
 }
 async function suggestQ(){var b=document.getElementById("aiBtn");b.disabled=true;b.innerText="...";try{var l=st.lang==="es"?"español":"English";var d=await aiCall('Generate 1 fun trivia question whose answer is an exact number (year, weight, distance, height). Respond ONLY JSON: {"question":"in '+l+'"}');document.getElementById("qIn").value=d.question;}catch(e){}b.disabled=false;applyL();}
 async function submitQ(){var q=document.getElementById("qIn").value.trim();if(!q)return;var b=document.getElementById("sendBtn");b.disabled=true;b.innerText="...";try{var l=st.lang==="es"?"español":"English";var ai=await aiCall('Trivia referee. Question: "'+q+'". Find exact numeric answer and clear unit in '+l+'. Respond ONLY JSON: {"answer":number_only,"unit":"unit","note":"1 short sentence"}');await db.ref("rooms/"+st.room).update({status:"guessing",current:{question:q,answer:Number(ai.answer),unit:ai.unit,note:ai.note,guesses:{}}});}catch(e){b.disabled=false;}applyL();}
 async function submitG(){var v=parseFloat(document.getElementById("gIn").value);if(isNaN(v))return;await db.ref("rooms/"+st.room+"/current/guesses/"+st.pid).set(v);document.getElementById("gIn").value="";}
-async function closeRound(){var d=st.data,ex=d.current.answer,gs=d.current.guesses||{};var rk=Object.entries(gs).map(function(e){return {pid:e[0],name:d.players[e[0]]?.name||"?",guess:e[1],diff:Math.abs(ex-e[1])};}).sort(function(a,b){return a.diff-b.diff;});var up={};rk.forEach(function(r,i){var pts=r.diff===0?100:i===0?50:i===1?25:0;r.points=pts;up["players/"+r.pid+"/score"]=(d.players[r.pid].score||0)+pts;});up.status="results";up["current/ranking"]=rk;await db.ref("rooms/"+st.room).update(up);}
+
 async function startGame(){await db.ref("rooms/"+st.room).update({status:"asking",round:1,turnIndex:0});}
 async function nextRound(){document.getElementById("qIn").value="";await db.ref("rooms/"+st.room).update({status:"asking",round:st.data.round+1,turnIndex:st.data.turnIndex+1,current:null});}
 async function skipTurn(){if(confirm("Skip?"))nextRound();}
