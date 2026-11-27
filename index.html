@@ -278,3 +278,28 @@ async function skipTurn(){if(confirm("Skip?"))nextRound();}
 </script>
 </body>
 </html>
+<script>
+(function(){
+  var tb=document.getElementById("tmrBox");
+  if(!tb){
+    tb=document.createElement("div");tb.id="tmrBox";tb.className="big";
+    tb.style.cssText="font-size:22px;color:#fbbf24";tb.innerText="30s";
+    var dq=document.getElementById("dispQ");if(dq)dq.parentNode.insertBefore(tb,dq.nextSibling);
+  }
+  var actx=null,tId=null,qSeen="",wSeen=false;
+  function unlock(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();if(actx.state==="suspended")actx.resume();}
+  document.addEventListener("touchstart",unlock);document.addEventListener("click",unlock);
+  function tone(f,d,tp){if(st.mute)return;try{unlock();var o=actx.createOscillator(),g=actx.createGain();o.type=tp||"sine";o.frequency.value=f;g.gain.setValueAtTime(.25,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d);o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+d);}catch(e){}}
+  function runClock(){clearInterval(tId);var s=30;tb.innerText="30s";tId=setInterval(function(){s--;tb.innerText=s+"s";if(s<=5&&s>0)tone(880,.12);if(s<=0){clearInterval(tId);tone(330,.4,"sawtooth");var b=document.getElementById("subGBtn");if(b)b.disabled=true;}},1000);}
+  var baseR=render;
+  render=function(d){
+    baseR(d);
+    if(d.status==="guessing"&&d.current?.question!==qSeen){qSeen=d.current.question;wSeen=false;tone(520,.12);runClock();}
+    if(d.status==="results"&&!wSeen){wSeen=true;qSeen="";clearInterval(tId);tone(523,.12);setTimeout(function(){tone(659,.12);},130);setTimeout(function(){tone(784,.25);},260);}
+  };
+  var baseG=submitG;
+  submitG=async function(){await baseG();tone(880,.15);};
+})();
+</script>
+</body>
+</html>
