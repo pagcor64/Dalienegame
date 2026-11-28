@@ -321,3 +321,45 @@ async function skipTurn(){if(confirm("Skip?"))nextRound();}
   };
 })();
 </script>
+<script>
+(function(){
+  function getGoal(n){return n<=4?200:n<=7?150:100;}
+  var bMeta=document.createElement("span");bMeta.className="badge";bMeta.style.cssText="background:#f59e0b;color:#0f172a;font-weight:700";
+  var rb=document.getElementById("rBadge");if(rb)rb.parentNode.insertBefore(bMeta,rb.nextSibling);
+
+  var winBox=document.createElement("div");winBox.className="hide";winBox.style.cssText="background:#14532d;border:2px solid #22c55e;border-radius:14px;padding:16px;text-align:center;margin-bottom:16px";
+  var sr=document.getElementById("sRes");if(sr)sr.insertBefore(winBox,sr.firstChild);
+
+  var rstBtn=document.createElement("button");rstBtn.className="sec hide";rstBtn.style.marginTop="10px";
+  rstBtn.onclick=async function(){
+    if(!st.data)return;
+    var up={status:"lobby",round:0,turnIndex:0,current:null};
+    Object.keys(st.data.players||{}).forEach(function(p){up["players/"+p+"/score"]=0;});
+    await db.ref("rooms/"+st.room).update(up);
+  };
+  var nb=document.getElementById("nextBtn");if(nb)nb.parentNode.appendChild(rstBtn);
+
+  var prevRender=render,champSpoken="";
+  render=function(d){
+    prevRender(d);
+    var pls=Object.values(d.players||{}),goal=getGoal(pls.length);
+    bMeta.innerText=(st.lang==="es"?"Meta: ":"Goal: ")+goal+" pts";
+    rstBtn.innerText=st.lang==="es"?"Nueva Partida (Reiniciar Puntos)":"New Match (Reset Scores)";
+    if(d.status==="results"){
+      var top=pls.slice().sort(function(a,b){return b.score-a.score;}).shift();
+      if(top&&top.score>=goal){
+        winBox.classList.remove("hide");
+        winBox.innerHTML='<div style="font-size:32px">🏆</div><h2 style="color:#4ade80;margin:4px 0">'+(st.lang==="es"?"¡CAMPEÓN DE LA PARTIDA!":"MATCH CHAMPION!")+'</h2><div class="big" style="color:#fff">'+top.name+' ('+top.score+' pts)</div>';
+        if(nb)nb.classList.add("hide");
+        if(st.adm)rstBtn.classList.remove("hide");
+        var msg=(st.lang==="es"?"¡Tenemos campeón! Gana la partida ":"We have a champion! Match winner is ")+top.name;
+        if(champSpoken!==msg){champSpoken=msg;setTimeout(function(){speak(msg);},2500);}
+      }else{
+        winBox.classList.add("hide");rstBtn.classList.add("hide");champSpoken="";
+      }
+    }else{
+      winBox.classList.add("hide");rstBtn.classList.add("hide");champSpoken="";
+    }
+  };
+})();
+</script>
